@@ -1,14 +1,15 @@
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include <stdbool.h>
 #include <assert.h>
 #include <string.h>
 
 #define ARRAY_SIZE(arr) (sizeof(arr)/sizeof((arr)[0]))
+#define TODO(message) do {fprintf(stderr, "%s:%d: TODO: %s\n", __FILE__, __LINE__, message)} while(0)
 
 typedef struct {
-  char *string;
+  char   *string;
   size_t length;
   size_t capacity;
 } String;
@@ -23,7 +24,7 @@ void string_reserve(String *str, size_t wanted_capacity)
       str->capacity *= 2;
     }
     str->string = realloc(str->string, str->capacity * sizeof(*str->string));
-    assert(str->string != NULL && "String (re)allocation failed");
+    assert(str->string != NULL && "String (re)allocation failed\n");
   }
 }
 
@@ -56,19 +57,19 @@ typedef enum {
 typedef struct Element Element;
 
 typedef struct {
-  const char *key;
-  const char *value;
+  String key;
+  String value;
   ValueType type;
 } KeyValue;
 
 typedef struct {
-  const char *key;
+  String key;
   size_t element_count;
   Element *elements;
 } Array;
 
 typedef struct {
-  const char *key;
+  String key;
   bool is_root;
   size_t element_count;
   struct Element *elements;
@@ -83,46 +84,27 @@ struct Element {
   };
 };
 
-int main(void)
+bool read_entire_file(const char *path, String *str)
 {
-  /*
-  FILE *fp;
-  fp = fopen("~/probe/c-toml/test.toml", "rb");
-  if (!fp) {
-    fprintf(stderr, "ERROR: Could not open file!\n");
-    return EXIT_FAILURE;
-  }
-  
-  uint8_t buffer[64 * 1024] = {0};
-  size_t ret = fread(buffer, sizeof(*buffer), ARRAY_SIZE(buffer), fp);
-  if (ferror(fp)) {
-    fprintf(stderr, "ERROR: Could not read file!");
-    return EXIT_FAILURE;
-  }
-  */
+  bool result = false;
+  FILE *fp = fopen("/home/vasilis/probe/c-toml/test.toml", "rb");
+  if (fp == NULL)                 goto defer;
+  if (fseek(fp, 0, SEEK_END) < 0) goto defer;
+  long file_size = ftell(fp);
+  if (file_size < 0)              goto defer;
+  if (fseek(fp, 0, SEEK_SET) < 0) goto defer;
 
-  String s = {0};
+  size_t new_length = str->length + file_size;
+  if (new_length > str->capacity)
+    string_reserve(str, new_length);
 
-  string_append(&s, "foo\t");
-  string_append(&s, "bar\t");
-  string_append(&s, "baz\t");
+  fread(str->string + str->length, file_size, 1, fp);
+  if (ferror(fp))                 goto defer;
+  str->length = new_length;
+  result = true;
 
-  printf("%s\n", s.string);
-
-  // Element element = {0};
-  // element.type = KEY_VALUE;
-  // element.key_value.key = "foo";
-  // element.key_value.value = "bar";
-  //
-  // Table table = {0};
-  // table.key = "test";
-  // table.element_count = 1;
-  // table.elements = &element;
-  //
-  // printf("%s\n", table.key);
-  // printf("%d\n", table.elements->type);
-  // printf("%s\n", table.elements->key_value.key);
-
-  // fclose(fp);
-  return 0;
+defer:
+    if (!result) fprintf(stderr, "ERROR: Could not read file %s: %s\n", path, strerror(errno));
+    if (fp) fclose(fp);
+    return result;
 }
