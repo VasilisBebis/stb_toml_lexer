@@ -4,16 +4,17 @@
 int main(void)
 {
   String s = {0};
-  read_entire_file("~/probe/c-toml/test.toml", &s);
-  // printf("%s", s.string);
+  // read_entire_file("~/probe/c-toml/test.toml", &s);
+  read_entire_file("/home/vasilis/probe/c-toml/test.toml", &s);
 
   Lexer lexer = lexer_new(s.string, s.length);
   Token token;
   token = lexer_next(&lexer);
   while (token.kind != TOKEN_END) {
-    printf("%.*s (%s) ", (int) token.text_length, token.text, token_kind_name(token.kind));
+    printf("\x1b[1;31m%.*s\x1b[0m(%s) ", (int) token.text_length, token.text, token_kind_name(token.kind));
     token = lexer_next(&lexer);
   }
+  printf("\n");
 
   // String s = {0};
   //

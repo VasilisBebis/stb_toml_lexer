@@ -30,6 +30,10 @@ const char *token_kind_name(TokenKind type)
       return "dot";
     case TOKEN_NEWLINE:
       return "\\n";
+    case TOKEN_BASIC_STRING:
+      return "basic string";
+    case TOKEN_ML_BASIC_STRING:
+      return "multiline basic string";
     default:
       return "not implemented";
   }
@@ -55,6 +59,22 @@ char lexer_chop_char(Lexer *lexer)
   return chopped;
 }
 
+PeekOption lexer_peek_char(Lexer *lexer)
+{
+  PeekOption result = {0};
+  if (lexer->cursor == lexer->content_length) {
+    result.eof = true;
+    return result;
+  }
+  char peek = lexer->content[lexer->cursor + 1];
+  result.ch = peek;
+  if (peek == '\n') {
+    lexer->line += 1;
+    lexer->beginning_of_line = lexer->cursor;
+  }
+  return result;
+}
+
 void lexer_trim_space(Lexer *lexer)
 {
   while (lexer->cursor < lexer->content_length && 
@@ -65,9 +85,10 @@ void lexer_trim_space(Lexer *lexer)
 
 bool is_symbol(char x)
 {
-  return isalnum(x) || x == '_';
+  return isalnum(x) || x == '_' || x == '-';
 }
 
+//TODO: check for invalid tokens within strings etc
 Token lexer_next(Lexer *lexer)
 {
   lexer_trim_space(lexer);
@@ -134,15 +155,70 @@ Token lexer_next(Lexer *lexer)
     token.text_length = 1;
     return token;
   }
-
+  
   if (lexer->content[lexer->cursor] == '#') {
     token.kind = TOKEN_COMMENT;
     while (lexer->cursor < lexer->content_length && lexer->content[lexer->cursor] != '\n') {
       token.text_length += 1;
       lexer_chop_char(lexer);
     }
-    if (lexer->cursor < lexer->content_length) {
+    return token;
+  }
+
+  if (lexer->content[lexer->cursor] == '"') {
+    token.text_length += 1;
+    if (lexer_peek_char(lexer).ch == '"') {
       lexer_chop_char(lexer);
+      token.text_length += 1;
+      if (lexer_peek_char(lexer).ch == '"') {
+        lexer_chop_char(lexer);
+        token.kind = TOKEN_ML_BASIC_STRING;
+
+        while (lexer->cursor < lexer->content_length) {
+          lexer_chop_char(lexer);
+          token.text_length += 1;
+          if (lexer->content[lexer->cursor] == '"') {
+            if (lexer_peek_char(lexer).ch == '"') {
+              lexer_chop_char(lexer);
+              token.text_length += 1;
+              if (lexer_peek_char(lexer).ch == '"') {
+                lexer_chop_char(lexer);
+                lexer_chop_char(lexer);
+                token.text_length += 2;
+                return token;
+              } else {
+                token.kind = TOKEN_INVALID;
+                return token;
+              }
+            } else {
+              token.kind = TOKEN_INVALID;
+              return token;
+            }
+          }
+        }
+      } else {
+        token.kind = TOKEN_INVALID;
+        return token;
+      }
+    }
+    token.kind = TOKEN_BASIC_STRING;
+    lexer->cursor += 1;
+    bool escaped = false;
+    while (lexer->cursor < lexer->content_length) {
+      lexer_chop_char(lexer);
+      token.text_length += 1;
+      if (lexer->content[lexer->cursor] == '\\') {
+        escaped = true;
+      }
+      if (lexer->content[lexer->cursor] == '"') {
+        lexer_chop_char(lexer);
+        token.text_length += 1;
+        if (escaped) {
+          escaped = false;
+          continue;
+        } else 
+          break;
+      }
     }
     return token;
   }

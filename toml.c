@@ -87,7 +87,7 @@ struct Element {
 bool read_entire_file(const char *path, String *str)
 {
   bool result = false;
-  FILE *fp = fopen("/home/vasilis/probe/c-toml/test.toml", "rb");
+  FILE *fp = fopen(path, "rb");
   if (fp == NULL)                 goto defer;
   if (fseek(fp, 0, SEEK_END) < 0) goto defer;
   long file_size = ftell(fp);
