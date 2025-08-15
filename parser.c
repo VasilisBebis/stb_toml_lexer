@@ -4,16 +4,12 @@
 #include <stdbool.h>
 #include <assert.h>
 #include <string.h>
+#include "parser.h"
 
 #define ARRAY_SIZE(arr) (sizeof(arr)/sizeof((arr)[0]))
 #define TODO(message) do {fprintf(stderr, "%s:%d: TODO: %s\n", __FILE__, __LINE__, message)} while(0)
 
-typedef struct {
-  char   *string;
-  size_t length;
-  size_t capacity;
-} String;
-
+//TODO: make a string function that copies `n` amount of chars from the source str
 void string_reserve(String *str, size_t wanted_capacity)
 {
   if (str->capacity < wanted_capacity) {
@@ -36,53 +32,6 @@ void string_append(String *str, char *appendant)
   memcpy(str->string + str->length, appendant_str, appendant_str_length * sizeof(*str->string));
   str->length += appendant_str_length; 
 }
-
-typedef enum {
-  STRING,
-  INTEGER,
-  FLOAT,
-  BOOLEAN,
-  OFFSET_DATETIME,
-  LOCAL_DATETIME,
-  OFFSET_DATE,
-  LOCAL_DATE,
-} ValueType;
-
-typedef enum {
-  KEY_VALUE,
-  ARRAY,
-  TABLE
-} ElementType;
-
-typedef struct Element Element;
-
-typedef struct {
-  String key;
-  String value;
-  ValueType type;
-} KeyValue;
-
-typedef struct {
-  String key;
-  size_t element_count;
-  Element *elements;
-} Array;
-
-typedef struct {
-  String key;
-  bool is_root;
-  size_t element_count;
-  struct Element *elements;
-} Table;
-
-struct Element {
-  ElementType type;
-  union {
-    KeyValue key_value;
-    Array    array;
-    Table    table;
-  };
-};
 
 bool read_entire_file(const char *path, String *str)
 {
@@ -107,4 +56,30 @@ defer:
     if (!result) fprintf(stderr, "ERROR: Could not read file %s: %s\n", path, strerror(errno));
     if (fp) fclose(fp);
     return result;
+}
+
+bool parse_key_val(Lexer *lexer, KeyValue *kv)
+{
+  bool result = false;
+  ExpectedToken expect_key = lexer_expect_tokens(lexer, TOKEN_SYMBOL, TOKEN_BASIC_STRING, TOKEN_LITERAL_STRING);
+  if (!expect_key.found) return false;
+
+  ExpectedToken expect_kv_sep = lexer_expect_token(lexer, TOKEN_EQUALS);
+  if (!expect_kv_sep.found) return false;
+
+  ExpectedToken expect_value = lexer_expect_tokens(lexer, TOKEN_SYMBOL, TOKEN_BASIC_STRING, TOKEN_LITERAL_STRING, TOKEN_ML_BASIC_STRING, TOKEN_ML_LITERAL_STRING);
+  if (!expect_value.found) return false;
+
+  ExpectedToken expect_newline = lexer_expect_tokens(lexer, TOKEN_NEWLINE, TOKEN_COMMENT);
+  if (!expect_newline.found) return false;
+
+  char key[1024] = {0};
+  strncpy(key, expect_key.token.text, expect_key.token.text_length);
+  char value[1024] = {0}; 
+  strncpy(value, expect_value.token.text, expect_value.token.text_length);
+  string_append(&kv->key, key);
+  string_append(&kv->value, value);
+  result = true;
+  
+  return result;
 }

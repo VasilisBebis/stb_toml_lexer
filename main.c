@@ -1,13 +1,20 @@
-#include "toml.c"
+#include "parser.h"
 #include "tokenizer.h"
 
 int main(void)
 {
   String s = {0};
   // read_entire_file("~/probe/c-toml/test.toml", &s);
-  read_entire_file("/home/vasilis/probe/c-toml/test.toml", &s);
+  read_entire_file("/home/vasilis/probe/c-toml/keyvalue.toml", &s);
 
   Lexer lexer = lexer_new(s.string, s.length);
+#if 1
+  KeyValue kv = {0};
+  bool result = parse_key_val(&lexer, &kv);
+  if (result)
+    printf("key: %.*s\nvalue: %.*s\n", (int) kv.key.length, kv.key.string, (int) kv.value.length, kv.value.string);
+#endif
+#if 0
   Token token;
   token = lexer_next(&lexer);
   while (token.kind != TOKEN_END) {
@@ -15,6 +22,7 @@ int main(void)
     token = lexer_next(&lexer);
   }
   printf("\n");
+#endif
 
   // String s = {0};
   //

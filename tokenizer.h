@@ -42,16 +42,20 @@ typedef struct {
   size_t beginning_of_line;
 } Lexer;
 
-typedef union {
-  bool  eof;
-  char  ch;
-} PeekOption;
+typedef struct {
+  bool found;
+  Token token;
+} ExpectedToken;
 
 const char *token_kind_name(TokenKind kind);
 Lexer lexer_new(const char *content, size_t content_length);
 Token lexer_next(Lexer *lexer);
+
+ExpectedToken lexer_expect_token(Lexer *lexer, TokenKind token_kind);
+ExpectedToken lexer_expect_tokens(Lexer *lexer, ...);
+
 void  lexer_trim_space(Lexer *lexer);
 char lexer_chop_char(Lexer *lexer);
-PeekOption lexer_peek_char(Lexer *lexer);
+char lexer_peek_char(Lexer *lexer);
 
 #endif

@@ -1,4 +1,5 @@
 #include "tokenizer.h"
+#include <stdarg.h>
 #include <ctype.h>
 #include <stdbool.h>
 #include <assert.h>
@@ -29,11 +30,19 @@ const char *token_kind_name(TokenKind type)
     case TOKEN_DOT:
       return "dot";
     case TOKEN_NEWLINE:
+#ifdef _WIN32
+      return "\\r\\n";
+#else 
       return "\\n";
+#endif
     case TOKEN_BASIC_STRING:
       return "basic string";
     case TOKEN_ML_BASIC_STRING:
       return "multiline basic string";
+    case TOKEN_LITERAL_STRING:
+      return "literal string";
+    case TOKEN_ML_LITERAL_STRING:
+      return "multiline literal string";
     default:
       return "not implemented";
   }
@@ -59,20 +68,15 @@ char lexer_chop_char(Lexer *lexer)
   return chopped;
 }
 
-PeekOption lexer_peek_char(Lexer *lexer)
+char lexer_peek_char(Lexer *lexer)
 {
-  PeekOption result = {0};
-  if (lexer->cursor == lexer->content_length) {
-    result.eof = true;
-    return result;
-  }
+  if (lexer->cursor == lexer->content_length) return 0;
   char peek = lexer->content[lexer->cursor + 1];
-  result.ch = peek;
   if (peek == '\n') {
     lexer->line += 1;
     lexer->beginning_of_line = lexer->cursor;
   }
-  return result;
+  return peek;
 }
 
 void lexer_trim_space(Lexer *lexer)
@@ -85,10 +89,11 @@ void lexer_trim_space(Lexer *lexer)
 
 bool is_symbol(char x)
 {
-  return isalnum(x) || x == '_' || x == '-';
+  return isalnum(x) || x == '_' || x == '-' || x == '.';
 }
 
 //TODO: check for invalid tokens within strings etc
+//TODO: look into ':' because its in the time things
 Token lexer_next(Lexer *lexer)
 {
   lexer_trim_space(lexer);
@@ -97,6 +102,19 @@ Token lexer_next(Lexer *lexer)
   };
 
   if (lexer->cursor >= lexer->content_length) return token;
+
+  if (lexer->content[lexer->cursor] == '\r') {
+    if (lexer_peek_char(lexer) == '\n') {
+      lexer_chop_char(lexer);
+      lexer_chop_char(lexer);
+      token.kind = TOKEN_NEWLINE;
+      token.text_length = 2;
+    } else {
+      token.kind = TOKEN_INVALID;
+      token.text_length = 1;
+    }
+    return token;
+  }
 
   if (lexer->content[lexer->cursor] == '\n') {
     lexer->cursor += 1;
@@ -165,12 +183,62 @@ Token lexer_next(Lexer *lexer)
     return token;
   }
 
-  if (lexer->content[lexer->cursor] == '"') {
+  if (lexer->content[lexer->cursor] == '\'') {
     token.text_length += 1;
-    if (lexer_peek_char(lexer).ch == '"') {
+    if (lexer_peek_char(lexer) == '\'') {
       lexer_chop_char(lexer);
       token.text_length += 1;
-      if (lexer_peek_char(lexer).ch == '"') {
+      if (lexer_peek_char(lexer) == '\'') {
+        lexer_chop_char(lexer);
+        token.kind = TOKEN_ML_LITERAL_STRING;
+
+        while (lexer->cursor < lexer->content_length) {
+          lexer_chop_char(lexer);
+          token.text_length += 1;
+          if (lexer->content[lexer->cursor] == '\'') {
+            if (lexer_peek_char(lexer) == '\'') {
+              lexer_chop_char(lexer);
+              token.text_length += 1;
+              if (lexer_peek_char(lexer) == '\'') {
+                lexer_chop_char(lexer);
+                lexer_chop_char(lexer);
+                token.text_length += 2;
+                return token;
+              } else {
+                token.kind = TOKEN_INVALID;
+                return token;
+              }
+            } else {
+              token.kind = TOKEN_INVALID;
+              return token;
+            }
+          }
+        }
+      } else {
+        token.kind = TOKEN_INVALID;
+        return token;
+      }
+    }
+    token.kind = TOKEN_LITERAL_STRING;
+    lexer->cursor += 1;
+    while (lexer->cursor < lexer->content_length) {
+      lexer_chop_char(lexer);
+      token.text_length += 1;
+      if (lexer->content[lexer->cursor] == '"') {
+        lexer_chop_char(lexer);
+        token.text_length += 1;
+        break;
+      }
+    }
+    return token;
+  }
+
+  if (lexer->content[lexer->cursor] == '"') {
+    token.text_length += 1;
+    if (lexer_peek_char(lexer) == '"') {
+      lexer_chop_char(lexer);
+      token.text_length += 1;
+      if (lexer_peek_char(lexer) == '"') {
         lexer_chop_char(lexer);
         token.kind = TOKEN_ML_BASIC_STRING;
 
@@ -178,10 +246,10 @@ Token lexer_next(Lexer *lexer)
           lexer_chop_char(lexer);
           token.text_length += 1;
           if (lexer->content[lexer->cursor] == '"') {
-            if (lexer_peek_char(lexer).ch == '"') {
+            if (lexer_peek_char(lexer) == '"') {
               lexer_chop_char(lexer);
               token.text_length += 1;
-              if (lexer_peek_char(lexer).ch == '"') {
+              if (lexer_peek_char(lexer) == '"') {
                 lexer_chop_char(lexer);
                 lexer_chop_char(lexer);
                 token.text_length += 2;
@@ -237,4 +305,36 @@ Token lexer_next(Lexer *lexer)
   token.text_length = 1;
 
   return token;
+}
+
+
+ExpectedToken lexer_expect_token(Lexer *lexer, TokenKind token_kind)
+{
+  ExpectedToken et = {0};
+  Token token = lexer_next(lexer);
+  if (token.kind == token_kind) {
+    et.found = true;
+    et.token = token;
+  }
+  return et;
+}
+
+ExpectedToken lexer_expect_tokens(Lexer *lexer, ...)
+{
+  ExpectedToken et = {0};
+  Token token = lexer_next(lexer);
+  va_list token_kinds;
+  va_start(token_kinds, lexer);
+  
+  TokenKind kind;
+  do {
+    kind = va_arg(token_kinds, TokenKind);
+    if (token.kind == kind) {
+      et.found = true;
+      et.token = token;
+      break;
+    }
+  } while (kind != 0);
+
+  return et;
 }
