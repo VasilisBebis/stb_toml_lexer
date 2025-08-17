@@ -59,6 +59,7 @@ struct Element {
 
 void string_reserve(String *str, size_t wanted_capacity);
 void string_append(String *str, char *appendant);
+void string_append_n(String *str, const char *appendant, size_t n);
 bool read_entire_file(const char *path, String *str);
 
 bool parse_key_val(Lexer *lexer, KeyValue *kv);

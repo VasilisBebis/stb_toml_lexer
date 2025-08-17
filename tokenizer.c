@@ -224,7 +224,7 @@ Token lexer_next(Lexer *lexer)
     while (lexer->cursor < lexer->content_length) {
       lexer_chop_char(lexer);
       token.text_length += 1;
-      if (lexer->content[lexer->cursor] == '"') {
+      if (lexer->content[lexer->cursor] == '\'') {
         lexer_chop_char(lexer);
         token.text_length += 1;
         break;
@@ -275,7 +275,7 @@ Token lexer_next(Lexer *lexer)
     while (lexer->cursor < lexer->content_length) {
       lexer_chop_char(lexer);
       token.text_length += 1;
-      if (lexer->content[lexer->cursor] == '\\') {
+      if (lexer->content[lexer->cursor] == '\\' && lexer_peek_char(lexer) == '"') {
         escaped = true;
       }
       if (lexer->content[lexer->cursor] == '"') {
@@ -307,19 +307,7 @@ Token lexer_next(Lexer *lexer)
   return token;
 }
 
-
-ExpectedToken lexer_expect_token(Lexer *lexer, TokenKind token_kind)
-{
-  ExpectedToken et = {0};
-  Token token = lexer_next(lexer);
-  if (token.kind == token_kind) {
-    et.found = true;
-    et.token = token;
-  }
-  return et;
-}
-
-ExpectedToken lexer_expect_tokens(Lexer *lexer, ...)
+ExpectedToken lexer_expect_token(Lexer *lexer, ...)
 {
   ExpectedToken et = {0};
   Token token = lexer_next(lexer);

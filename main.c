@@ -8,13 +8,13 @@ int main(void)
   read_entire_file("/home/vasilis/probe/c-toml/keyvalue.toml", &s);
 
   Lexer lexer = lexer_new(s.string, s.length);
-#if 1
+#if 0
   KeyValue kv = {0};
   bool result = parse_key_val(&lexer, &kv);
   if (result)
     printf("key: %.*s\nvalue: %.*s\n", (int) kv.key.length, kv.key.string, (int) kv.value.length, kv.value.string);
 #endif
-#if 0
+#if 1
   Token token;
   token = lexer_next(&lexer);
   while (token.kind != TOKEN_END) {

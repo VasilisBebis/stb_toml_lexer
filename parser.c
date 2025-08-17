@@ -33,6 +33,16 @@ void string_append(String *str, char *appendant)
   str->length += appendant_str_length; 
 }
 
+void string_append_n(String *str, const char *appendant, size_t n) 
+{
+  assert(strlen(appendant) >= n);
+  const char *appendant_str = appendant;
+  size_t appendant_str_length = n;
+  string_reserve(str, str->length + appendant_str_length);
+  memcpy(str->string + str->length, appendant_str, appendant_str_length * sizeof(*str->string));
+  str->length += appendant_str_length; 
+}
+
 bool read_entire_file(const char *path, String *str)
 {
   bool result = false;
@@ -61,24 +71,20 @@ defer:
 bool parse_key_val(Lexer *lexer, KeyValue *kv)
 {
   bool result = false;
-  ExpectedToken expect_key = lexer_expect_tokens(lexer, TOKEN_SYMBOL, TOKEN_BASIC_STRING, TOKEN_LITERAL_STRING);
+  ExpectedToken expect_key = lexer_expect_token(lexer, TOKEN_SYMBOL, TOKEN_BASIC_STRING, TOKEN_LITERAL_STRING);
   if (!expect_key.found) return false;
 
   ExpectedToken expect_kv_sep = lexer_expect_token(lexer, TOKEN_EQUALS);
   if (!expect_kv_sep.found) return false;
 
-  ExpectedToken expect_value = lexer_expect_tokens(lexer, TOKEN_SYMBOL, TOKEN_BASIC_STRING, TOKEN_LITERAL_STRING, TOKEN_ML_BASIC_STRING, TOKEN_ML_LITERAL_STRING);
+  ExpectedToken expect_value = lexer_expect_token(lexer, TOKEN_SYMBOL, TOKEN_BASIC_STRING, TOKEN_LITERAL_STRING, TOKEN_ML_BASIC_STRING, TOKEN_ML_LITERAL_STRING);
   if (!expect_value.found) return false;
 
-  ExpectedToken expect_newline = lexer_expect_tokens(lexer, TOKEN_NEWLINE, TOKEN_COMMENT);
+  ExpectedToken expect_newline = lexer_expect_token(lexer, TOKEN_NEWLINE, TOKEN_COMMENT);
   if (!expect_newline.found) return false;
 
-  char key[1024] = {0};
-  strncpy(key, expect_key.token.text, expect_key.token.text_length);
-  char value[1024] = {0}; 
-  strncpy(value, expect_value.token.text, expect_value.token.text_length);
-  string_append(&kv->key, key);
-  string_append(&kv->value, value);
+  string_append_n(&kv->key, expect_key.token.text, expect_key.token.text_length);
+  string_append_n(&kv->value, expect_value.token.text, expect_value.token.text_length);
   result = true;
   
   return result;
