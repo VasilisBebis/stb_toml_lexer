@@ -10,6 +10,8 @@ typedef enum {
   TOKEN_EQUALS,
   TOKEN_DOT,
   TOKEN_COMMA,
+  TOKEN_PLUS,
+  TOKEN_COLON,
   TOKEN_OPEN_BRACKET,
   TOKEN_CLOSE_BRACKET,
   TOKEN_OPEN_CURLY,
@@ -52,8 +54,9 @@ Lexer lexer_new(const char *content, size_t content_length);
 Token lexer_next(Lexer *lexer);
 
 ExpectedToken lexer_expect_token(Lexer *lexer, ...);
+TokenKind     lexer_peek_token(Lexer *lexer);
 
-void  lexer_trim_space(Lexer *lexer);
+void lexer_trim_space(Lexer *lexer);
 char lexer_chop_char(Lexer *lexer);
 char lexer_peek_char(Lexer *lexer);
 

@@ -29,6 +29,10 @@ const char *token_kind_name(TokenKind type)
       return "comma";
     case TOKEN_DOT:
       return "dot";
+    case TOKEN_PLUS:
+      return "plus";
+    case TOKEN_COLON:
+      return "colon";
     case TOKEN_NEWLINE:
 #ifdef _WIN32
       return "\\r\\n";
@@ -87,6 +91,7 @@ void lexer_trim_space(Lexer *lexer)
   }
 }
 
+//TODO: get rid of x == '.' because dots are separate tokens
 bool is_symbol(char x)
 {
   return isalnum(x) || x == '_' || x == '-' || x == '.';
@@ -174,6 +179,20 @@ Token lexer_next(Lexer *lexer)
     return token;
   }
   
+  if (lexer->content[lexer->cursor] == '+') {
+    lexer->cursor += 1;
+    token.kind = TOKEN_PLUS;
+    token.text_length = 1;
+    return token;
+  }
+
+  if (lexer->content[lexer->cursor] == ':') {
+    lexer->cursor += 1;
+    token.kind = TOKEN_COLON;
+    token.text_length = 1;
+    return token;
+  }
+
   if (lexer->content[lexer->cursor] == '#') {
     token.kind = TOKEN_COMMENT;
     while (lexer->cursor < lexer->content_length && lexer->content[lexer->cursor] != '\n') {
@@ -307,6 +326,7 @@ Token lexer_next(Lexer *lexer)
   return token;
 }
 
+//TODO: rename this to lexer_expect_and_consume_token because it actually consumes the token 
 ExpectedToken lexer_expect_token(Lexer *lexer, ...)
 {
   ExpectedToken et = {0};
@@ -325,4 +345,19 @@ ExpectedToken lexer_expect_token(Lexer *lexer, ...)
   } while (kind != 0);
 
   return et;
+}
+
+TokenKind lexer_peek_token(Lexer *lexer)
+{
+  
+  size_t current_cursor = lexer->cursor;
+  size_t current_line = lexer->line;
+  size_t currnet_beginning_of_line = lexer->beginning_of_line;
+
+  Token token = lexer_next(lexer);
+  lexer->cursor = current_cursor;
+  lexer->line = current_line;
+  lexer->beginning_of_line = currnet_beginning_of_line;
+
+  return token.kind;
 }

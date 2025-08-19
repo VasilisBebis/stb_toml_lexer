@@ -13,12 +13,15 @@ typedef struct {
 typedef enum {
   STRING,
   INTEGER,
+  INFINITY,
+  NAN,
   FLOAT,
   BOOLEAN,
   OFFSET_DATETIME,
   LOCAL_DATETIME,
   OFFSET_DATE,
   LOCAL_DATE,
+  INVALID,
 } ValueType;
 
 typedef enum {
@@ -45,7 +48,7 @@ typedef struct {
   String key;
   bool is_root;
   size_t element_count;
-  struct Element *elements;
+  Element *elements;
 } Table;
 
 struct Element {
@@ -64,4 +67,5 @@ bool read_entire_file(const char *path, String *str);
 
 bool parse_key_val(Lexer *lexer, KeyValue *kv);
 
-#endif
+const char *value_type_name(ValueType type);
+#endif // PARSER_H
