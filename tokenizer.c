@@ -98,7 +98,6 @@ bool is_symbol(char x)
 }
 
 //TODO: check for invalid tokens within strings etc
-//TODO: look into ':' because its in the time things
 Token lexer_next(Lexer *lexer)
 {
   lexer_trim_space(lexer);
