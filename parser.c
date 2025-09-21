@@ -67,23 +67,23 @@ defer:
     return result;
 }
 
-bool parse_key_val(Lexer *lexer, KeyValue *kv)
+bool parse_key_val(stbtl__lexer *lexer, KeyValue *kv)
 {
   bool result = false;
-  ExpectedToken expect_key = lexer_expect_token(lexer, TOKEN_SYMBOL, 
+  stbtl__expected_token expect_key = stbtl__lexer_expect_and_consume_token(lexer, TOKEN_SYMBOL, 
       TOKEN_BASIC_STRING, TOKEN_LITERAL_STRING);
   if (!expect_key.found) return false;
 
-  ExpectedToken expect_kv_sep = lexer_expect_token(lexer, TOKEN_EQUALS);
+  stbtl__expected_token expect_kv_sep = stbtl__lexer_expect_and_consume_token(lexer, TOKEN_EQUALS);
   if (!expect_kv_sep.found) return false;
 
-  ExpectedToken expect_value = lexer_expect_token(lexer, TOKEN_PLUS, TOKEN_SYMBOL, 
+  stbtl__expected_token expect_value = stbtl__lexer_expect_and_consume_token(lexer, TOKEN_PLUS, TOKEN_SYMBOL, 
       TOKEN_BASIC_STRING, TOKEN_LITERAL_STRING, TOKEN_ML_BASIC_STRING, TOKEN_ML_LITERAL_STRING);
   if (!expect_value.found) return false;
 
   if (expect_value.token.kind == TOKEN_PLUS) {
 
-    ExpectedToken expect_actual_value = lexer_expect_token(lexer, TOKEN_SYMBOL);
+    stbtl__expected_token expect_actual_value = stbtl__lexer_expect_and_consume_token(lexer, TOKEN_SYMBOL);
     if (!expect_actual_value.found) return false;
 
     expect_value = expect_actual_value;
@@ -91,12 +91,26 @@ bool parse_key_val(Lexer *lexer, KeyValue *kv)
 
   String temp = {0};
   string_append_n(&temp, expect_value.token.text, expect_value.token.text_length);
+  
+  // getting the whole scientific notation number in the string
   char last_char = expect_value.token.text[expect_value.token.text_length-1];
   if (last_char == 'e') {
-    while (lexer_peek_token(lexer) != TOKEN_COMMENT 
-        && lexer_peek_token(lexer) != TOKEN_NEWLINE) {
+    while (stbtl__lexer_peek_token(lexer) != TOKEN_COMMENT 
+        && stbtl__lexer_peek_token(lexer) != TOKEN_NEWLINE) {
 
-      ExpectedToken expected = lexer_expect_token(lexer, TOKEN_SYMBOL, TOKEN_PLUS);
+      stbtl__expected_token expected = stbtl__lexer_expect_and_consume_token(lexer, TOKEN_SYMBOL, TOKEN_PLUS);
+      if (!expected.found) return false;
+
+      string_append_n(&temp, expected.token.text, expected.token.text_length);
+
+    }
+  }
+
+  if (stbtl__lexer_peek_token(lexer) == TOKEN_COLON) {
+    while (stbtl__lexer_peek_token(lexer) != TOKEN_COMMENT 
+        && stbtl__lexer_peek_token(lexer) != TOKEN_NEWLINE) {
+
+      stbtl__expected_token expected = stbtl__lexer_expect_and_consume_token(lexer, TOKEN_SYMBOL, TOKEN_COLON);
       if (!expected.found) return false;
 
       string_append_n(&temp, expected.token.text, expected.token.text_length);
@@ -104,7 +118,7 @@ bool parse_key_val(Lexer *lexer, KeyValue *kv)
     }
   }
   
-  ExpectedToken expect_newline = lexer_expect_token(lexer, TOKEN_NEWLINE, TOKEN_COMMENT);
+  stbtl__expected_token expect_newline = stbtl__lexer_expect_and_consume_token(lexer, TOKEN_NEWLINE, TOKEN_COMMENT);
   if (!expect_newline.found) return false;
 
   string_append_n(&kv->key, expect_key.token.text, expect_key.token.text_length);
@@ -120,6 +134,11 @@ bool parse_key_val(Lexer *lexer, KeyValue *kv)
       break;
     case TOKEN_SYMBOL:
       {
+        if (strchr(kv->value.string, ':') != NULL) {
+          kv->type = OFFSET_DATETIME;
+          break;
+        }
+
         if (strchr(kv->value.string, '.') == NULL) { // no `.` found, meaning its not a float
           char* end_int;
           //TODO: handle this stupid case: `int8 = 1_2_3_4_5`

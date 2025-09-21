@@ -1,4 +1,6 @@
 #include "parser.h"
+
+#define STB_TOML_LEXER_IMPLEMENTATION
 #include "tokenizer.h"
 
 int main(void)
@@ -7,8 +9,8 @@ int main(void)
   // read_entire_file("~/probe/c-toml/test.toml", &s);
   read_entire_file("/home/vasilis/probe/c-toml/keyvalue.toml", &s);
 
-  Lexer lexer = lexer_new(s.string, s.length);
-#if 1
+  stbtl__lexer lexer = stbtl__lexer_new(s.string, s.length);
+#if 0
   bool result = false;
   do {
     KeyValue kv = {0};
@@ -19,11 +21,11 @@ int main(void)
     printf("---------------\n");
   } while (result);
 #else
-  Token token;
-  token = lexer_next(&lexer);
+  stbtl__token token;
+  token = stbtl__lexer_next(&lexer);
   while (token.kind != TOKEN_END) {
-    printf("\x1b[1;31m%.*s\x1b[0m(%s) ", (int) token.text_length, token.text, token_kind_name(token.kind));
-    token = lexer_next(&lexer);
+    printf("\x1b[1;31m%.*s\x1b[0m(%s) ", (int) token.text_length, token.text, stbtl__token_kind_name(token.kind));
+    token = stbtl__lexer_next(&lexer);
   }
   printf("\n");
 #endif

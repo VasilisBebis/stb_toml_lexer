@@ -1,3 +1,6 @@
 /bin
 *.toml
 main
+main.c
+parser.*
+Makefile

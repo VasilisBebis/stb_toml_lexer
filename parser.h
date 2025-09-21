@@ -65,7 +65,7 @@ void string_append(String *str, char *appendant);
 void string_append_n(String *str, const char *appendant, size_t n);
 bool read_entire_file(const char *path, String *str);
 
-bool parse_key_val(Lexer *lexer, KeyValue *kv);
+bool parse_key_val(stbtl__lexer *lexer, KeyValue *kv);
 
 const char *value_type_name(ValueType type);
 #endif // PARSER_H
