@@ -9,7 +9,7 @@ The implementation of the library is guarded by the `STB_TOML_LEXER_IMPLEMENTATI
 #define STB_TOML_LEXER_IMPLEMENTATION
 //optionally
 //#define STBTL_DEF static inline
-#include "tokenizer.h"
+#include "stb_toml_lexer.h"
 
 int main(void)
 {
